@@ -1,32 +1,39 @@
 from os import path
 import cv2
-import time
 from vidgear.gears import CamGear
 
+
 class YoutubeVideoSource():
-    def __init__(self, url):
+    def __init__(self, url, max_dim=None):
         """
 
         :param source_config:
         """
-        super().__init__()
+        # super().__init__()
         self.__url = url
 
         self.__cam_gear_options = {"CAP_PROP_FRAME_WIDTH ": 320, "CAP_PROP_FRAME_HEIGHT": 240, "CAP_PROP_FPS ": 1}
 
         self.__stream = None
         self._set_capture()
+        self._max_dim = max_dim if max_dim is not None else False
 
     def get_frames(self):
-        count = 0
+        # count = 0
         self.__stream.start()
         try:
             while True:
                 frame = self.__stream.read()
                 if frame is None:
                     break
-                yield count, frame
-                count += 1
+                if not self._max_dim:
+                    yield frame
+                else:
+                    yield resize_if_larger(frame, self._max_dim)
+
+
+                # yield count, frame
+                # count += 1
 
         except StopIteration:
             pass
@@ -44,8 +51,6 @@ class YoutubeVideoSource():
         self.__stream = CamGear(source=self.__url, y_tube=True, time_delay=1, logging=True, **self.__cam_gear_options)
 
 
-
-
 # İmaj boyutlarından birisi max_dim'den daha büyükse küçültür, değilse aynen döner.
 def resize_if_larger(image, max_dim, interpolation=None):
     h, w = image.shape[:2]
@@ -59,6 +64,7 @@ def resize_if_larger(image, max_dim, interpolation=None):
             return resize(image, height=max_dim)
         else:
             return image
+
 
 # 'width' veya 'height yoksa en-boy oranını koruyarak resize eder. İkisi de varsa normal resize eder.
 # 'interpolation' yoksa en uygununu seçer.
@@ -81,6 +87,7 @@ def resize(image, width=None, height=None, interpolation=None):
         return resize_best_quality(image, dim)
     else:
         return cv2.resize(image, dim, interpolation=interpolation)
+
 
 # Boyut değişikliğine en uygun interpolation yöntemi ile resize eder.
 def resize_best_quality(image, size):
