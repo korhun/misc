@@ -2,38 +2,49 @@ from os import path
 import cv2
 from vidgear.gears import CamGear
 
+from image_helper import resize_if_larger
+
 
 class YoutubeVideoSource():
-    def __init__(self, url, max_dim=None):
-        """
+    def __init__(self, main_win_name, url=None, max_dim=1600):
+        if url is None:
+            # url = "https://youtu.be/MNn9qKG2UFI"  # highway
+            url = "https://www.youtube.com/watch?v=8Ts9M2f11HE"  # drag
+            # url = "https://www.youtube.com/watch?v=ho1QG2OEMFs&t=26s"  # TR
+        # max_dim = None
 
-        :param source_config:
-        """
-        # super().__init__()
         self.__url = url
 
         self.__cam_gear_options = {"CAP_PROP_FRAME_WIDTH ": 320, "CAP_PROP_FRAME_HEIGHT": 240, "CAP_PROP_FPS ": 1}
 
         self.__stream = None
         self._set_capture()
-        self._max_dim = max_dim if max_dim is not None else False
+        self._max_dim = max_dim
+        self._main_win_name = main_win_name
 
     def get_frames(self):
         # count = 0
         self.__stream.start()
         try:
+            skip = 0
             while True:
                 frame = self.__stream.read()
                 if frame is None:
                     break
-                if not self._max_dim:
-                    yield frame
+                if self._max_dim is not None:
+                    frame = resize_if_larger(frame, self._max_dim)
+
+                if skip > 0:
+                    skip = skip - 1
+                    cv2.imshow(self._main_win_name, frame)
                 else:
-                    yield resize_if_larger(frame, self._max_dim)
+                    yield frame
 
-
-                # yield count, frame
-                # count += 1
+                k = cv2.waitKey(1) & 0xFF
+                if k == ord("q"):
+                    break
+                elif k == ord("s"):
+                    skip = 10
 
         except StopIteration:
             pass
@@ -49,51 +60,3 @@ class YoutubeVideoSource():
 
     def _set_capture(self):
         self.__stream = CamGear(source=self.__url, y_tube=True, time_delay=1, logging=True, **self.__cam_gear_options)
-
-
-# İmaj boyutlarından birisi max_dim'den daha büyükse küçültür, değilse aynen döner.
-def resize_if_larger(image, max_dim, interpolation=None):
-    h, w = image.shape[:2]
-    if w > h:
-        if w > max_dim:
-            return resize(image, width=max_dim)
-        else:
-            return image
-    else:
-        if h > max_dim:
-            return resize(image, height=max_dim)
-        else:
-            return image
-
-
-# 'width' veya 'height yoksa en-boy oranını koruyarak resize eder. İkisi de varsa normal resize eder.
-# 'interpolation' yoksa en uygununu seçer.
-def resize(image, width=None, height=None, interpolation=None):
-    if width is None and height is None:
-        return image
-
-    h, w = image.shape[:2]
-    dim = None
-    if width is None:
-        r = height / float(h)
-        dim = (int(w * r), height)
-    elif height is None:
-        r = width / float(w)
-        dim = (width, int(h * r))
-    else:
-        dim = (width, height)
-
-    if interpolation is None:
-        return resize_best_quality(image, dim)
-    else:
-        return cv2.resize(image, dim, interpolation=interpolation)
-
-
-# Boyut değişikliğine en uygun interpolation yöntemi ile resize eder.
-def resize_best_quality(image, size):
-    size0 = max(image.shape[0], image.shape[1])
-    size1 = max(size[0], size[1])
-    if size0 > size1:
-        return cv2.resize(image, size, interpolation=cv2.INTER_LANCZOS4)
-    else:
-        return cv2.resize(image, size, interpolation=cv2.INTER_CUBIC)
