@@ -254,11 +254,13 @@ Toggle(){
 	}
 	else if (lt = 1)
 	{
-		snap_window(1/3, 0, 2/3, 1)
+		snap_window(1/5, 0, 4/5, 1)
+		;snap_window(1/3, 0, 2/3, 1)
 	}
 	else if (lt = 2)
 	{
-		snap_window(1/7, 1/7, 1/2, 1/1.4)
+		snap_window(1/10, 1/10, 3/4, 4/5)
+		;snap_window(1/7, 1/7, 1/2, 1/2.4)
 		;snap_window_static(50, 50, 900, 700)
 		lt := -1
 	}
