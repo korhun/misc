@@ -3,13 +3,24 @@ import cv2
 import base64
 import numpy as np
 
+# from ndu_gate_camera.utility.ndu_utility import NDUUtility
+
+
+def image_h_w(image):
+    # h, w = image.shape[:2]
+    return image.shape[:2]
+
 
 # Boyut değişikliğine en uygun interpolation yöntemi ile resize eder.
 def resize_best_quality(image, size):
     size0 = max(image.shape[0], image.shape[1])
     size1 = max(size[0], size[1])
-    if size0 > size1:
-        return cv2.resize(image, size, interpolation=cv2.INTER_LANCZOS4)
+    if size0 == size1:
+        return image.copy()
+    elif size0 > size1:
+        # if size0 > 2 * size1:
+        #     image = cv2.pyrDown(image)
+        return cv2.resize(image, size, interpolation=cv2.INTER_AREA)
     else:
         return cv2.resize(image, size, interpolation=cv2.INTER_CUBIC)
 
@@ -51,7 +62,6 @@ def resize(image, width=None, height=None, interpolation=None):
         return image
 
     h, w = image.shape[:2]
-    dim = None
     if width is None:
         r = height / float(h)
         dim = (int(w * r), height)
@@ -68,7 +78,7 @@ def resize(image, width=None, height=None, interpolation=None):
 
 
 # total_pixel_count sonucun width * height değeridir.
-# int yuvarlaması yüzünden sonuç w*h değer, tam total_pixel_count olmayabilir.
+# int yuvarlama yüzünden sonuç w*h değer, tam total_pixel_count olmayabilir.
 def resize_total_pixel_count(image, total_pixel_count):
     h, w = image.shape[:2]
     ratio = w / float(h)
@@ -99,15 +109,10 @@ def fill_polyline_transparent(image, pnts, color, opacity, thickness=-1):
     cv2.copyTo(res, None, image)
 
 
-def select_areas(frame, window_name, color=(0, 0, 255), opacity=0.3, thickness=4, max_count=None, next_area_key="n", finish_key="s", max_point_count=None):
-    def fill(image_, areas_):
-        for area1 in areas_:
-            pts = np.array(area1, np.int32)
-            fill_polyline_transparent(image_, [pts], color=color, opacity=opacity, thickness=thickness)
-
-    image = None
-    areas = []
+def select_areas(frame, window_name, color=(0, 0, 255), opacity=0.3, thickness=4, max_count=None, next_area_key="n",
+                 finish_key="s"):
     try:
+        areas = []
         area = []
 
         def get_mouse_points(event, x, y, _flags, _param):
@@ -121,11 +126,15 @@ def select_areas(frame, window_name, color=(0, 0, 255), opacity=0.3, thickness=4
         new_area = False
         while True:
             image = frame.copy()
-            fill(image, areas)
+            for area1 in areas:
+                pts = np.array(area1, np.int32)
+                fill_polyline_transparent(image, [pts], color=color, opacity=opacity, thickness=thickness)
+
             if not new_area:
                 if len(area) > 0:
                     pts = np.array(area, np.int32)
-                    fill_polyline_transparent(image, [pts], color=color, opacity=opacity, thickness=thickness)
+                    fill_polyline_transparent(image, [pts], color=color, opacity=opacity,
+                                              thickness=thickness)
                     for pnt in area:
                         cv2.circle(image, pnt, thickness * 2, color, thickness)
             else:
@@ -141,8 +150,6 @@ def select_areas(frame, window_name, color=(0, 0, 255), opacity=0.3, thickness=4
             k = cv2.waitKey(1)
             if k & 0xFF == ord(finish_key):
                 break
-            elif max_point_count is not None and len(area) >= max_point_count:
-                break
             elif k & 0xFF == ord(next_area_key):
                 new_area = True
 
@@ -150,22 +157,14 @@ def select_areas(frame, window_name, color=(0, 0, 255), opacity=0.3, thickness=4
             areas.append(area)
         return areas
     finally:
-        image = frame.copy()
-        fill(image, areas)
-        cv2.imshow(window_name, image)
-        cv2.waitKey(500)
         cv2.destroyWindow(window_name)
 
 
 def select_lines(frame, window_name, color=(0, 255, 255), thickness=4, max_count=None, finish_key="s"):
-    def draw(image_, lines_):
-        for line1 in lines_:
-            pts = np.array(line1, np.int32)
-            cv2.polylines(image_, [pts], False, color=color, thickness=thickness)
-
-    lines = []
-    line = []
     try:
+        lines = []
+        line = []
+
         def get_mouse_points(event, x, y, _flags, _param):
             if event == cv2.EVENT_LBUTTONDOWN:
                 line.append((x, y))
@@ -176,7 +175,9 @@ def select_lines(frame, window_name, color=(0, 255, 255), thickness=4, max_count
 
         while True:
             image = frame.copy()
-            draw(image, lines)
+            for line1 in lines:
+                pts = np.array(line1, np.int32)
+                cv2.polylines(image, [pts], False, color=color, thickness=thickness)
             for pnt in line:
                 cv2.circle(image, pnt, thickness * 2, color, thickness)
             if len(line) == 2:
@@ -193,10 +194,6 @@ def select_lines(frame, window_name, color=(0, 255, 255), thickness=4, max_count
 
         return lines
     finally:
-        image = frame.copy()
-        draw(image, lines)
-        cv2.imshow(window_name, image)
-        cv2.waitKey(500)
         cv2.destroyWindow(window_name)
 
 
@@ -227,7 +224,9 @@ def select_points(frame, window_name, color=(0, 255, 255), radius=8, thickness=4
         cv2.destroyWindow(window_name)
 
 
-def put_text(img, text_, center, color=None, font_scale=0.5, thickness=1, back_color=None):
+def put_text(img, text_, center, color=None, font_scale=0.5, thickness=1, back_color=None, replace_tur_chars=True):
+    if replace_tur_chars:
+        text_ = NDUUtility.debug_replace_tur_chars(text_)
     if back_color is None:
         back_color = [0, 0, 0]
     if color is None:
@@ -256,3 +255,79 @@ def frame2base64(frame, scale=40):
     res, frame = cv2.imencode('.png', scaled_frame)
     base64_data = base64.b64encode(frame)
     return base64_data.decode('utf-8')
+
+
+def normalize_coordinates(image, coords):
+    h, w = image.shape[:2]
+    pnts = []
+    for x, y in coords:
+        pnts.append((x / w, y / h))
+    return pnts
+
+
+def denormalize_coordinates(image, coords):
+    h, w = image.shape[:2]
+    pnts = []
+    for x, y in coords:
+        pnts.append((int(x * w), int(y * h)))
+    return pnts
+
+
+def normalize_lines(image, lines):
+    lines1 = []
+    for line in lines:
+        lines1.append(normalize_coordinates(image, line))
+    return lines1
+
+
+def denormalize_lines(image, lines):
+    lines1 = []
+    for line in lines:
+        lines1.append(denormalize_coordinates(image, line))
+    return lines1
+
+
+def convert_lines_list2tuple(lines):
+    res = []
+    for line in lines:
+        line1 = []
+        for c in line:
+            line1.append(tuple(c))
+        res.append(line1)
+    return res
+
+
+def convert_lines_tuple2list(lines):
+    res = []
+    for line in lines:
+        line1 = []
+        for c in line:
+            line1.append(list(c))
+        res.append(line1)
+    return res
+
+
+def crop(frame, rect):
+    y1 = max(int(rect[0]), 0)
+    x1 = max(int(rect[1]), 0)
+    y2 = max(int(rect[2]), 0)
+    x2 = max(int(rect[3]), 0)
+    return frame[y1:y2, x1:x2]
+
+
+def change_brightness(img, value):
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(hsv)
+
+    if value >0:
+        lim = 255 - value
+        v[v > lim] = 255
+        v[v <= lim] += value
+    else:
+        lim = 0 - value
+        v[v < lim] = 0
+        v[v >= lim] -= abs(value)
+
+    final_hsv = cv2.merge((h, s, v))
+    img = cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
+    return img

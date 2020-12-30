@@ -4,7 +4,9 @@ import os
 import pathlib
 from typing import AnyStr
 
-import str_helper
+# from ndu_gate_camera.utility import string_helper
+# from ndu_gate_camera.utility.ndu_utility import NDUUtility
+import string_helper
 
 
 def read_lines(filename, encoding="utf-8"):
@@ -33,23 +35,27 @@ def enumerate_files(dir_path, recursive=False, wildcard_pattern=None, case_insen
     #             yield os.path.join(dir_path, file_name_with_extension), file_name_with_extension
     #     else:
     #         for file_name_with_extension in [f for f in listdir(dir_path) if isfile(join(dir_path, f))]:
-    #             if str_helper.wildcard(file_name_with_extension, filter, case_insensitive):
+    #             if string_helper.wildcard(file_name_with_extension, filter, case_insensitive):
     #                 yield os.path.join(dir_path, file_name_with_extension), file_name_with_extension
     if wildcard_pattern is None:
         for root, sub_dirs, files in os.walk(dir_path):
-            for fn in files:
-                yield path_join(root, fn)
+            for name in files:
+                yield path_join(root, name)
             if not recursive:
                 break
     else:
         for root, sub_dirs, files in os.walk(dir_path):
-            for fn in files:
-                name = os.path.basename(fn)
-                if str_helper.wildcard(name, wildcard_pattern, case_insensitive=case_insensitive):
-                    yield fn
+            for name in files:
+                # name = os.path.basename(fn)
+                if string_helper.wildcard(name, wildcard_pattern, case_insensitive=case_insensitive):
+                    yield path_join(root, name)
             if not recursive:
                 break
 
+
+def append_line(filename, line, encoding="utf-8"):
+    with codecs.open(filename, "a", encoding) as f:
+        f.write("%s\n" % line)
 
 
 def get_parent_dir_path(file_name):
@@ -61,4 +67,4 @@ def get_parent_dir_name(file_name):
 
 
 def path_join(a: AnyStr, *paths: AnyStr) -> AnyStr:
-    return os.path.join(a, *paths).replace("\\", "/")
+    return os.path.join(a, *paths).replace("/", os.path.sep)
