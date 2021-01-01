@@ -1,88 +1,98 @@
 import os
 
+import cv2
 import image_helper
 import file_helper
-import cv2
 import contextlib
 
-fn_ann = "C:/_koray/train_datasets/aerial_vehicle/oid_v6/annotation1024.txt"
-read_dir = "C:/_koray/train_datasets/aerial_vehicle/oid_v6/Vehicules1024/"
-write_dir = "C:/_koray/train_datasets/aerial_vehicle/oid_v6/Vehicules1024_koray/"
 
-'''
-[1, 2, 4, 5, 7, 8, 9, 10, 11, 23, 31]
-1 car
-2 truck
-4 tractor
-5 caravan
-7 bus
-9 van
-10 caterpillar
-11 van
-23 boat
-31 airplane
-'''
-# class_ids = []
-class_ids_koray = {
-    "001": 0,  # car
-    "002": 1,  # lorry
-    "004": 2,  # tractor
-    "005": 3,  # caravan
-    "007": 4,  # motorbike
-    "008": 5,  # bus
-    "009": 6,  # van
-    "010": 7,  # caterpillar
-    "011": 8,  # truck
-    "023": 9,  # boat
-    "031": 10  # airplane
-}
+def _oidv6_to_yolo(class_id, class_name, images_dir, labels_dir, yolo_dir):
+    for label_fn in file_helper.enumerate_files(labels_dir, recursive=False):
+        try:
+            print(label_fn, end="\r")
+            name = os.path.basename(label_fn)
+            image_fn = file_helper.path_join(images_dir, name.replace(".txt", ".jpg"))
+            if os.path.isfile(image_fn):
+                write_image_fn = file_helper.path_join(yolo_dir, name.replace(".txt", ".jpg"))
+                write_fn_txt = file_helper.path_join(yolo_dir, name)
+                if os.path.isfile(write_image_fn) and os.path.isfile(write_fn_txt):
+                    continue
 
-for line in file_helper.read_lines(fn_ann):
-    line = line.replace("\t", " ").replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("  ", " ")
-    arr = line.split(" ")
-    if len(arr) > 0:
-        fn_png = "{}{}_co.png".format(read_dir, arr[0])
-        fn_jpg = "{}{}.jpg".format(write_dir, arr[0])
-        fn_txt = "{}{}.txt".format(write_dir, arr[0])
+                mat = cv2.imread(image_fn)
+                h, w = image_helper.image_h_w(mat)
+                lines = []
+                for line in file_helper.read_lines(label_fn):
+                    line = line.replace("\t", " ").replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("  ", " ")
+                    arr0 = line.split(" ")
+                    arr = [class_id]
+                    x1 = float(arr0[1])
+                    y1 = float(arr0[2])
+                    x2 = float(arr0[3])
+                    y2 = float(arr0[4])
+                    arr.append((x1 + x2) * 0.5 / w)
+                    arr.append((y1 + y2) * 0.5 / h)
+                    arr.append((x2 - x1) / w)
+                    arr.append((y2 - y1) / h)
+                    line = ' '.join(str(e) for e in arr)
+                    lines.append(line)
 
-        # with contextlib.suppress(FileNotFoundError):
-        #     os.remove(fn_txt)
+                if len(lines) > 0:
+                    # write_image_fn = file_helper.path_join(yolo_dir, name.replace(".txt", ".jpg"))
+                    # cv2.imwrite(write_image_fn, mat)
+                    file_helper.copy_file(image_fn, write_image_fn)
 
-        for i in range(len(arr)):
-            if i != 12:
-                arr[i] = float(arr[i])
+                    with contextlib.suppress(FileNotFoundError):
+                        os.remove(write_fn_txt)
+                    file_helper.write_lines(write_fn_txt, lines)
+                else:
+                    print("nok: " + label_fn)
+            else:
+                print("no image: " + image_fn)
+        except Exception as e:
+            print('Error - file:{} msg:{}'.format(label_fn, str(e)))
 
-        # class_id = class_ids_koray[int(arr[12])]
-        # class_id = int(arr[12])
-        # if class_id not in [13]:
-        #     continue
-        # class_id = int(arr[12])
-        # if class_id not in class_ids:
-        #     class_ids.append(class_id)
+    print("finished: " + class_name)
 
-        class_id = class_ids_koray[arr[12]]
 
-        mat = cv2.imread(fn_png)
-        h, w = image_helper.image_h_w(mat)
-        cv2.imwrite(fn_jpg, mat)
+def oidv6_to_yolo(yolo_dir, classes, images_dir_pattern, labels_dir_pattern):
+    if not os.path.isdir(yolo_dir):
+        file_helper.create_dir(yolo_dir)
+    classes_txt_fn = file_helper.path_join(yolo_dir, "classes.txt")
+    for class_name in classes:
+        file_helper.append_line(classes_txt_fn, class_name)
+    for class_id, class_name in enumerate(classes):
+        images_dir = images_dir_pattern.format(class_name)
+        labels_dir = labels_dir_pattern.format(class_name)
 
-        x1 = min(arr[4], arr[5], arr[6], arr[7])
-        y1 = min(arr[8], arr[9], arr[10], arr[11])
+        _oidv6_to_yolo(class_id, class_name, images_dir, labels_dir, yolo_dir)
 
-        x2 = max(arr[4], arr[5], arr[6], arr[7])
-        y2 = max(arr[8], arr[9], arr[10], arr[11])
 
-        cx = (arr[4] + arr[5] + arr[6] + arr[7]) / 4
-        cy = (arr[8] + arr[9] + arr[10] + arr[11]) / 4
+def run():
+    # https://github.com/DmitryRyumin/OIDv6/blob/master/oidv6/classes.txt
+    # oidv6 downloader en --dataset C:/_koray/train_datasets/oidv6/_download --type_data all --classes Motorcycle Truck "Seat belt" Car Bicycle Bus Van Person  --yes
+    # oidv6 downloader en --dataset C:/_koray/train_datasets/oidv6/_download --type_data all --classes Vehicle Helmet "Bicycle helmet" "Football helmet" Taxi Telephone "Mobile phone" "Corded phone" Train "Human face" "Human arm" "Human body" "Human head" Man Woman Girl Boy Wheel --yes
 
-        cx_ = cx / h
-        cy_ = cy / w
-        w_ = (x2 - x1) / h
-        h_ = (y2 - y1) / w
-        yolo_txt = "{} {} {} {} {}".format(class_id, cx_, cy_, w_, h_)
-        file_helper.append_line(fn_txt, yolo_txt)
+    # classes = [
+    #     (0, "seat_belt")
+    #     (0, "person")
+    # ]
+    # output_dir = "C:/_koray/train_datasets/oidv6_yolo/seat_belt/"  C:/_koray/train_datasets/oidv6_yolo/vehicles
 
-    # break
-# class_ids.sort()
-# print(class_ids)
-print("finished")
+    classes = [
+        "vehicle_registration_plate",
+        "bicycle",
+        "bus",
+        "car",
+        "motorcycle",
+        "truck",
+        "van"
+    ]
+    output_dir = "C:/_koray/train_datasets/oidv6_yolo/vehicles/"
+
+    images_dir_pattern = "C:/_koray/train_datasets/oidv6/{}/"
+    labels_dir_pattern = "C:/_koray/train_datasets/oidv6/{}/labels/"
+
+    oidv6_to_yolo(output_dir, classes, images_dir_pattern, labels_dir_pattern)
+
+
+run()

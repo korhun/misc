@@ -3,6 +3,7 @@ import io
 import os
 import pathlib
 from typing import AnyStr
+from shutil import copyfile
 
 # from ndu_gate_camera.utility import string_helper
 # from ndu_gate_camera.utility.ndu_utility import NDUUtility
@@ -68,3 +69,13 @@ def get_parent_dir_name(file_name):
 
 def path_join(a: AnyStr, *paths: AnyStr) -> AnyStr:
     return os.path.join(a, *paths).replace("/", os.path.sep)
+
+
+########need sync
+def create_dir(dir_name, parents=True, exist_ok=True):
+    from pathlib import Path
+    Path(dir_name).mkdir(parents=parents, exist_ok=exist_ok)
+
+
+def copy_file(source, target):
+    copyfile(source, target)
