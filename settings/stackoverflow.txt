@@ -1,0 +1,3 @@
+uBlock filter:
+stackoverflow.com##.top-bar .-secondary .-link._danger-indicator:after
+

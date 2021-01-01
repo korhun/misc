@@ -331,3 +331,79 @@ def change_brightness(img, value):
     final_hsv = cv2.merge((h, s, v))
     img = cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
     return img
+
+
+def normalize_coordinates(image, coords):
+    h, w = image.shape[:2]
+    pnts = []
+    for x, y in coords:
+        pnts.append((x / w, y / h))
+    return pnts
+
+
+def denormalize_coordinates(image, coords):
+    h, w = image.shape[:2]
+    pnts = []
+    for x, y in coords:
+        pnts.append((int(x * w), int(y * h)))
+    return pnts
+
+
+def normalize_lines(image, lines):
+    lines1 = []
+    for line in lines:
+        lines1.append(normalize_coordinates(image, line))
+    return lines1
+
+
+def denormalize_lines(image, lines):
+    lines1 = []
+    for line in lines:
+        lines1.append(denormalize_coordinates(image, line))
+    return lines1
+
+
+def convert_lines_list2tuple(lines):
+    res = []
+    for line in lines:
+        line1 = []
+        for c in line:
+            line1.append(tuple(c))
+        res.append(line1)
+    return res
+
+
+def convert_lines_tuple2list(lines):
+    res = []
+    for line in lines:
+        line1 = []
+        for c in line:
+            line1.append(list(c))
+        res.append(line1)
+    return res
+
+
+def crop(frame, rect):
+    y1 = max(int(rect[0]), 0)
+    x1 = max(int(rect[1]), 0)
+    y2 = max(int(rect[2]), 0)
+    x2 = max(int(rect[3]), 0)
+    return frame[y1:y2, x1:x2]
+
+
+def change_brightness(img, value):
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(hsv)
+
+    if value >0:
+        lim = 255 - value
+        v[v > lim] = 255
+        v[v <= lim] += value
+    else:
+        lim = 0 - value
+        v[v < lim] = 0
+        v[v >= lim] -= abs(value)
+
+    final_hsv = cv2.merge((h, s, v))
+    img = cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
+    return img
