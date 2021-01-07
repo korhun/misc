@@ -21,3 +21,11 @@ def wildcard_has_match(list_txt, pattern, case_insensitive=True):
         if wildcard(txt, pattern, case_insensitive):
             return True
     return False
+
+
+def equals_case_insensitive(string1, string2):
+    return string1.lower() == string2.lower()
+
+
+def join(list_of_string, separator):
+    return separator.join(list_of_string)
