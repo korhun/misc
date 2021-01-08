@@ -1,6 +1,7 @@
 from os import path
 import cv2
 from vidgear.gears import CamGear
+#pip install vidgear==0.1.9 --upgrade
 
 from image_helper import resize_if_larger
 
@@ -36,7 +37,6 @@ class YoutubeVideoSource():
 
                 if skip > 0:
                     skip = skip - 1
-                    cv2.imshow(self._main_win_name, frame)
                 else:
                     yield frame
 
@@ -60,3 +60,12 @@ class YoutubeVideoSource():
 
     def _set_capture(self):
         self.__stream = CamGear(source=self.__url, y_tube=True, time_delay=1, logging=True, **self.__cam_gear_options)
+
+
+vid = YoutubeVideoSource("https://www.youtube.com/watch?v=ho1QG2OEMFs&t=26s")
+i=0
+for frame in vid.get_frames():
+    cv2.imshow("deneme", frame)
+    i+=1
+    if i % 30:
+        cv2.imwrite("C:/_koray/temp/frame{}.jpg".format(i), frame)
