@@ -3,6 +3,7 @@ import os
 import cv2
 
 import file_helper
+import image_helper
 import string_helper
 
 
@@ -25,6 +26,30 @@ def save_images_with_cv(source_dir_name, target_dir_name):
     print("save_images_with_cv finished")
 
 
+def class_info_yolo(labels_dir, classes_txt_fn):
+    class_names = file_helper.read_lines(classes_txt_fn)
+    class_counts = {}
+    for name in class_names:
+        class_counts[name] = 0
+    for fn in file_helper.enumerate_files(labels_dir, wildcard_pattern="*.txt"):
+        try:
+            for line in file_helper.read_lines(fn):
+                class_id = int(line.split(" ")[0])
+                name = class_names[class_id]
+                class_counts[name] += 1
+            print(class_counts, end="                                  \r")
+        except Exception as e:
+            print("error - class_info_yolo: {}".format(fn))
+
+    print(class_counts)
+
+
+def class_info_names(classes_txt_fn):
+    class_names = file_helper.read_lines(classes_txt_fn)
+    print(class_names)
+    return class_names
+
+
 def mirror_images(source_dir_name, target_dir_name):
     if not os.path.isdir(target_dir_name):
         file_helper.create_dir(target_dir_name)
@@ -44,7 +69,6 @@ def mirror_images(source_dir_name, target_dir_name):
                 for line in file_helper.read_lines(fn):
                     lst = line.split(" ")
                     lst[1] = str(1 - float(lst[1]))
-                    # lst[2] = str(1 - float(lst[2]))
                     new_line = string_helper.join(lst, " ")
                     file_helper.append_line(new_fn, new_line)
             else:
@@ -56,6 +80,67 @@ def mirror_images(source_dir_name, target_dir_name):
             print("error - mirror_images: {}".format(fn))
 
     print("mirror_images finished")
+
+
+def mirror_images_of_classes(input_images_dir, input_labels_dir, output_dir, class_ids, copy_other_classes=True):
+    out_images_dir = file_helper.path_join(output_dir, "images")
+    out_labels_dir = file_helper.path_join(output_dir, "labels")
+    for dir_name in [out_images_dir, out_labels_dir]:
+        if not os.path.isdir(dir_name):
+            file_helper.create_dir(dir_name)
+
+    i = 0
+    for fn_label in file_helper.enumerate_files(input_labels_dir, recursive=False, wildcard_pattern="*.txt"):
+        try:
+            i += 1
+            print("{} - {}".format(i, fn_label), end="                        \r")
+            dir_name, name, extension = file_helper.get_file_name_extension(fn_label)
+            mirror = False
+            for line in file_helper.read_lines(fn_label):
+                class_id = int(line.split(" ")[0])
+                if class_id in class_ids:
+                    mirror = True
+                    break
+
+            if mirror:
+                fn_image = file_helper.path_join(input_images_dir, name + ".jpg")
+                if not os.path.isfile(fn_image):
+                    print("No image: {}".format(fn_image))
+                else:
+                    new_image_fn = file_helper.path_join(out_images_dir, name + "_mirror" + ".jpg")
+                    cv2.imwrite(new_image_fn, image_helper.mirror(cv2.imread(fn_image)))
+
+                    new_label_fn1 = file_helper.path_join(out_labels_dir, name + "_mirror" + ".txt")
+                    new_label_fn2 = file_helper.path_join(out_images_dir, name + "_mirror" + ".txt")
+                    new_label_file_names = [new_label_fn1, new_label_fn2]
+                    for new_label_fn in new_label_file_names:
+                        if os.path.isfile(new_label_fn):
+                            raise Exception()
+                        for line in file_helper.read_lines(fn_label):
+                            lst = line.split(" ")
+                            lst[1] = str(1 - float(lst[1]))
+                            new_line = string_helper.join(lst, " ")
+                            file_helper.append_line(new_label_fn, new_line)
+            if mirror or copy_other_classes:
+                fn_image = file_helper.path_join(input_images_dir, name + ".jpg")
+                if not os.path.isfile(fn_image):
+                    print("No image: {}".format(fn_image))
+                else:
+                    new_image_fn = file_helper.path_join(out_images_dir, name + ".jpg")
+                    cv2.imwrite(new_image_fn, cv2.imread(fn_image))
+
+                    new_label_fn1 = file_helper.path_join(out_labels_dir, name + ".txt")
+                    new_label_fn2 = file_helper.path_join(out_images_dir, name + ".txt")
+                    new_label_file_names = [new_label_fn1, new_label_fn2]
+                    for new_label_fn in new_label_file_names:
+                        if os.path.isfile(new_label_fn):
+                            raise Exception()
+                        file_helper.copy_file(fn_label, new_label_fn)
+
+        except Exception as e:
+            print("error - mirror_images_of_classes: {}".format(fn_label))
+
+    print("mirror_images_of_classes {} finished".format(class_ids))
 
 
 def change_class_id(labels_dir, class_id_from, class_id_to):
@@ -219,7 +304,7 @@ def generate_train_txt(output_dir, model_name, class_names, images_dir, ratio_tr
 def check_class_ids(train_files_dir, class_names, model_name):
     max_class_id = len(class_names)
     # all_data = f"{train_files_dir}/data/{model_name}_all_data.txt"
-    all_data = file_helper.path_join(train_files_dir, model_name +"_all_data.txt")
+    all_data = file_helper.path_join(train_files_dir, model_name + "_all_data.txt")
     with open(all_data) as f:
         content = f.readlines()
     content = [x.strip() for x in content]
@@ -232,8 +317,8 @@ def check_class_ids(train_files_dir, class_names, model_name):
             content = f.readlines()
             content = [x.strip() for x in content]
             for c in content:
-                id = int(c.split(" ")[0])
-                if id >= max_class_id:
+                id_ = int(c.split(" ")[0])
+                if id_ >= max_class_id:
                     bad_files.append(fn2)
             # print(str(content) + " " + fn2)
 
@@ -264,4 +349,42 @@ def run_e_scooter():
     pass
 
 
-run_e_scooter()
+# run_e_scooter()
+
+def run_vehicles_multi():
+    ###############
+    # images_dir = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi/images"
+    #     # labels_dir1 = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi/images"
+    #     # labels_dir2 = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi/labels"
+    #     # classes_txt_fn = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi/classes.txt"
+    #
+    #     # class_info_yolo(labels_dir1, classes_txt_fn)
+    #     # 0: {'bicycle': 41788, 'bus': 12416, 'car': 288152, 'motorcycle': 14297, 'truck': 13561, 'van': 8553, 'vehicle_registration_plate': 11682}
+    #
+    #     # class_names = class_info_names(classes_txt_fn)
+    #     # # ['bicycle', 'bus', 'car', 'motorcycle', 'truck', 'van', 'vehicle_registration_plate']
+    #     #
+    #     # mirror_to = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi_mirror"
+    # mirror_images_of_classes(images_dir, labels_dir1, mirror_to, [class_names.index("van"), class_names.index("vehicle_registration_plate")])
+
+    ###############
+    images_dir = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi_mirror/images"
+    labels_dir1 = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi_mirror/images"
+    labels_dir2 = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi_mirror/labels"
+    classes_txt_fn = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi_mirror/classes.txt"
+
+    class_info_yolo(labels_dir1, classes_txt_fn)
+    # vehicles 6 class multi + capture edilen + mirrorları burada birleştirildi
+
+
+
+run_vehicles_multi()
+
+
+
+def run_vehicles_capture():
+    input_dir = "C:/_koray/train_datasets/vehicle_registration_plate/captured_class6"
+    output_dir = "C:/_koray/train_datasets/vehicle_registration_plate/captured_class6_mirror"
+    mirror_images(input_dir, output_dir)
+
+# run_vehicles_capture()
