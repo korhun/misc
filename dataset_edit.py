@@ -10,8 +10,11 @@ import string_helper
 def save_images_with_cv(source_dir_name, target_dir_name):
     if not os.path.isdir(target_dir_name):
         file_helper.create_dir(target_dir_name)
+    i = 0
     for fn in file_helper.enumerate_files(source_dir_name):
         try:
+            i += 1
+            print("{} - {}".format(i, fn), end="\r")
             dir_name, name, extension = file_helper.get_file_name_extension(fn)
             if string_helper.equals_case_insensitive(extension, ".txt"):
                 new_fn = file_helper.path_join(target_dir_name, name + extension)
@@ -53,8 +56,11 @@ def class_info_names(classes_txt_fn):
 def mirror_images(source_dir_name, target_dir_name):
     if not os.path.isdir(target_dir_name):
         file_helper.create_dir(target_dir_name)
+    i = 0
     for fn in file_helper.enumerate_files(source_dir_name):
         try:
+            i += 1
+            print("{} - {}".format(i, fn), end="\r")
             dir_name, name, extension = file_helper.get_file_name_extension(fn)
             if string_helper.equals_case_insensitive(extension, ".txt"):
                 if name == "classes" and extension == ".txt":
@@ -146,8 +152,11 @@ def mirror_images_of_classes(input_images_dir, input_labels_dir, output_dir, cla
 def change_class_id(labels_dir, class_id_from, class_id_to):
     if not os.path.isdir(labels_dir):
         raise Exception("bad dir: " + labels_dir)
+    i = 0
     for fn in file_helper.enumerate_files(labels_dir):
         try:
+            i += 1
+            print("{} - {}".format(i, fn), end="\r")
             dir_name, name, extension = file_helper.get_file_name_extension(fn)
             if string_helper.equals_case_insensitive(extension, ".txt"):
                 if name == "classes" and extension == ".txt":
@@ -328,63 +337,84 @@ def check_class_ids(train_files_dir, class_names, model_name):
     print("check_files finished")
 
 
-def run_e_scooter():
+def run_vehicles_single():
+    model_name = "lp_single"
+    class_names = ["vehicle_license_plate"]
+    images0_dir = "C:/_koray/train_datasets/vehicle_registration_plate/lp_single/images0"
+    images1_dir = "C:/_koray/train_datasets/vehicle_registration_plate/lp_single/images1"
+    images_dir = "C:/_koray/train_datasets/vehicle_registration_plate/lp_single/images"
+    classes_txt_fn = "C:/_koray/train_datasets/vehicle_registration_plate/lp_single/classes.txt"
+    # change_class_id(images0_dir, 6, 0)
+    # mirror_images(images0_dir, images1_dir)
+    # save_images_with_cv(images1_dir, images_dir)
+
+    change_class_id(images_dir, 15, 0)
+    check_single_files(images_dir)
+    class_info_yolo(images_dir, classes_txt_fn)
+
     train_files_dir = "C:/_koray/git/yolov5/data"
-
-    model_name = "e_scooter"
-    images_dir0 = "C:/_koray/train_datasets/e_scooter/images0"
-    images_dir = "C:/_koray/train_datasets/e_scooter/images"
-    class_names = ["electric scooter"]
-
-    # save_images_with_cv(images_dir0, images_dir)
-    # mirror_images(images_dir, images_dir)
-    # check_single_files(images_dir)
-
-    ## change_class_id(images_dir, 1, 0)
-
     generate_train_txt(train_files_dir, model_name, class_names, images_dir, ratio_train=0.7, ratio_val=0.3, ratio_test=0)
     check_class_ids(train_files_dir, class_names, model_name)
 
-    # yolov4 -> C:\_koray\git\darknet\build\darknet\x64
-    pass
+
+run_vehicles_single()
 
 
-# run_e_scooter()
-
-def run_vehicles_multi():
-    ###############
-    # images_dir = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi/images"
-    #     # labels_dir1 = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi/images"
-    #     # labels_dir2 = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi/labels"
-    #     # classes_txt_fn = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi/classes.txt"
-    #
-    #     # class_info_yolo(labels_dir1, classes_txt_fn)
-    #     # 0: {'bicycle': 41788, 'bus': 12416, 'car': 288152, 'motorcycle': 14297, 'truck': 13561, 'van': 8553, 'vehicle_registration_plate': 11682}
-    #
-    #     # class_names = class_info_names(classes_txt_fn)
-    #     # # ['bicycle', 'bus', 'car', 'motorcycle', 'truck', 'van', 'vehicle_registration_plate']
-    #     #
-    #     # mirror_to = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi_mirror"
-    # mirror_images_of_classes(images_dir, labels_dir1, mirror_to, [class_names.index("van"), class_names.index("vehicle_registration_plate")])
-
-    ###############
-    images_dir = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi_mirror/images"
-    labels_dir1 = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi_mirror/images"
-    labels_dir2 = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi_mirror/labels"
-    classes_txt_fn = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi_mirror/classes.txt"
-
-    class_info_yolo(labels_dir1, classes_txt_fn)
-    # vehicles 6 class multi + capture edilen + mirrorları burada birleştirildi
-
-
-
-run_vehicles_multi()
-
-
-
-def run_vehicles_capture():
-    input_dir = "C:/_koray/train_datasets/vehicle_registration_plate/captured_class6"
-    output_dir = "C:/_koray/train_datasets/vehicle_registration_plate/captured_class6_mirror"
-    mirror_images(input_dir, output_dir)
-
-# run_vehicles_capture()
+# def run_e_scooter():
+#     train_files_dir = "C:/_koray/git/yolov5/data"
+#
+#     model_name = "e_scooter"
+#     images_dir0 = "C:/_koray/train_datasets/e_scooter/images0"
+#     images_dir = "C:/_koray/train_datasets/e_scooter/images"
+#     class_names = ["electric scooter"]
+#
+#     # save_images_with_cv(images_dir0, images_dir)
+#     # mirror_images(images_dir, images_dir)
+#     # check_single_files(images_dir)
+#
+#     ## change_class_id(images_dir, 1, 0)
+#
+#     generate_train_txt(train_files_dir, model_name, class_names, images_dir, ratio_train=0.7, ratio_val=0.3, ratio_test=0)
+#     check_class_ids(train_files_dir, class_names, model_name)
+#
+#     # yolov4 -> C:\_koray\git\darknet\build\darknet\x64
+#     pass
+#
+#
+# # run_e_scooter()
+#
+# def run_vehicles_multi():
+#     ###############
+#     # images_dir = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi/images"
+#     #     # labels_dir1 = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi/images"
+#     #     # labels_dir2 = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi/labels"
+#     #     # classes_txt_fn = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi/classes.txt"
+#     #
+#     #     # class_info_yolo(labels_dir1, classes_txt_fn)
+#     #     # 0: {'bicycle': 41788, 'bus': 12416, 'car': 288152, 'motorcycle': 14297, 'truck': 13561, 'van': 8553, 'vehicle_registration_plate': 11682}
+#     #
+#     #     # class_names = class_info_names(classes_txt_fn)
+#     #     # # ['bicycle', 'bus', 'car', 'motorcycle', 'truck', 'van', 'vehicle_registration_plate']
+#     #     #
+#     #     # mirror_to = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi_mirror"
+#     # mirror_images_of_classes(images_dir, labels_dir1, mirror_to, [class_names.index("van"), class_names.index("vehicle_registration_plate")])
+#
+#     ###############
+#     images_dir = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi_mirror/images"
+#     labels_dir1 = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi_mirror/images"
+#     labels_dir2 = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi_mirror/labels"
+#     classes_txt_fn = "C:/_koray/train_datasets/oidv6_yolo/vehicles_multi_mirror/classes.txt"
+#
+#     class_info_yolo(labels_dir1, classes_txt_fn)
+#     # vehicles 6 class multi + capture edilen + mirrorları burada birleştirildi
+#
+#
+# # run_vehicles_multi()
+#
+#
+# def run_vehicles_capture():
+#     input_dir = "C:/_koray/train_datasets/vehicle_registration_plate/captured_class6"
+#     output_dir = "C:/_koray/train_datasets/vehicle_registration_plate/captured_class6_mirror"
+#     mirror_images(input_dir, output_dir)
+#
+# # run_vehicles_capture()
