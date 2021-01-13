@@ -81,7 +81,6 @@ def copy_file(source, target):
     copyfile(source, target)
 
 
-
 def get_file_name_extension(file_full_name) -> Tuple[AnyStr, AnyStr, AnyStr]:
     dir_name, file_name = os.path.split(file_full_name)
     name, extension = os.path.splitext(file_name)
