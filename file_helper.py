@@ -71,7 +71,6 @@ def path_join(a: AnyStr, *paths: AnyStr) -> AnyStr:
     return os.path.join(a, *paths).replace("/", os.path.sep)
 
 
-########need sync
 def create_dir(dir_name, parents=True, exist_ok=True):
     from pathlib import Path
     Path(dir_name).mkdir(parents=parents, exist_ok=exist_ok)
