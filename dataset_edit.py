@@ -1,3 +1,4 @@
+import contextlib
 import os
 
 import cv2
@@ -10,11 +11,8 @@ import string_helper
 def save_images_with_cv(source_dir_name, target_dir_name):
     if not os.path.isdir(target_dir_name):
         file_helper.create_dir(target_dir_name)
-    i = 0
     for fn in file_helper.enumerate_files(source_dir_name):
         try:
-            i += 1
-            print("{} - {}".format(i, fn), end="\r")
             dir_name, name, extension = file_helper.get_file_name_extension(fn)
             if string_helper.equals_case_insensitive(extension, ".txt"):
                 new_fn = file_helper.path_join(target_dir_name, name + extension)
@@ -337,28 +335,126 @@ def check_class_ids(train_files_dir, class_names, model_name):
     print("check_files finished")
 
 
-def run_vehicles_single():
-    model_name = "lp_single"
-    class_names = ["vehicle_license_plate"]
-    images0_dir = "C:/_koray/train_datasets/vehicle_registration_plate/lp_single/images0"
-    images1_dir = "C:/_koray/train_datasets/vehicle_registration_plate/lp_single/images1"
-    images_dir = "C:/_koray/train_datasets/vehicle_registration_plate/lp_single/images"
-    classes_txt_fn = "C:/_koray/train_datasets/vehicle_registration_plate/lp_single/classes.txt"
-    # change_class_id(images0_dir, 6, 0)
-    # mirror_images(images0_dir, images1_dir)
-    # save_images_with_cv(images1_dir, images_dir)
+def check_labels(labels_dir):
+    if not os.path.isdir(labels_dir):
+        raise Exception("bad dir: " + labels_dir)
+    i = 0
+    for fn in file_helper.enumerate_files(labels_dir):
+        try:
+            i += 1
+            print("{} - {}".format(i, fn), end="\r")
+            dir_name, name, extension = file_helper.get_file_name_extension(fn)
+            if string_helper.equals_case_insensitive(extension, ".txt"):
+                if name == "classes" and extension == ".txt":
+                    continue
 
-    change_class_id(images_dir, 15, 0)
-    check_single_files(images_dir)
-    class_info_yolo(images_dir, classes_txt_fn)
+                lines = []
+                changed = False
+                for line in file_helper.read_lines(fn):
+                    lst = line.split(" ")
+                    for j in range(1, len(lst)):
+                        val = float(lst[j])
+                        if val < 0:
+                            changed = True
+                            lst[j] = "0"
+                        elif val > 1:
+                            changed = True
+                            lst[j] = "1"
+                    new_line = string_helper.join(lst, " ")
+                    lines.append(new_line)
+                if changed:
+                    file_helper.delete_file(fn)
+                    file_helper.write_lines(fn, lines)
+        except Exception as e:
+            print("error - mirror_images: {}".format(fn))
 
+    print("change_class_id finished")
+
+def oidv6_to_yolo(images_and_labels_dir, class_id):
+    for label_fn in file_helper.enumerate_files(images_and_labels_dir, recursive=False, wildcard_pattern="*.txt"):
+        try:
+            print(label_fn, end="\r")
+            name = os.path.basename(label_fn)
+            image_fn = file_helper.path_join(images_and_labels_dir, name.replace(".txt", ".jpg"))
+            if os.path.isfile(image_fn):
+                mat = cv2.imread(image_fn)
+                h, w = image_helper.image_h_w(mat)
+                lines = []
+                for line in file_helper.read_lines(label_fn):
+                    line = line.replace("\t", " ").replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("  ", " ")
+                    arr0 = line.split(" ")
+                    arr = [class_id]
+                    x1 = float(arr0[1])
+                    y1 = float(arr0[2])
+                    x2 = float(arr0[3])
+                    y2 = float(arr0[4])
+                    arr.append((x1 + x2) * 0.5 / w)
+                    arr.append((y1 + y2) * 0.5 / h)
+                    arr.append((x2 - x1) / w)
+                    arr.append((y2 - y1) / h)
+                    line = ' '.join(str(e) for e in arr)
+                    lines.append(line)
+
+                with contextlib.suppress(FileNotFoundError):
+                    os.remove(label_fn)
+                file_helper.write_lines(label_fn, lines)
+            else:
+                print("no image: " + image_fn)
+        except Exception as e:
+            print('Error - file:{} msg:{}'.format(label_fn, str(e)))
+
+
+def merge_single_classes(input_dirs, merge_dir):
+    i = 0
+    for input_dir in input_dirs:
+        for fn in file_helper.enumerate_files(input_dir):
+            try:
+                i += 1
+                print("{} - {}".format(i, fn), end="\r")
+                dir_name, name, extension = file_helper.get_file_name_extension(fn)
+                if extension != ".txt":
+                    fn_input_txt = file_helper.path_join(input_dir, name + ".txt")
+                    if not os.path.isfile(fn_input_txt):
+                        raise Exception("no label file!")
+                    fn_output_txt = file_helper.path_join(merge_dir, name + ".txt")
+
+                    fn_input_img = fn
+                    fn_output_img = file_helper.path_join(merge_dir, name + ".jpg")
+                    if not os.path.isfile(fn_output_img):
+                        mat = cv2.imread(fn_input_img)
+                        cv2.imwrite(fn_output_img, mat)
+
+                    if not os.path.isfile(fn_output_txt):
+                        file_helper.copy_file(fn_input_txt, fn_output_txt)
+                    else:
+                        file_helper.append_lines(fn_output_txt, file_helper.read_lines(fn_input_txt))
+                        print('Merged: {}'.format(fn_output_txt), end="\r")
+            except Exception as e:
+                print('Error - merge_single_classes - file: {} msg: {}'.format(fn, str(e)))
+
+
+def run_e_scooter():
     train_files_dir = "C:/_koray/git/yolov5/data"
+
+    model_name = "e_scooter"
+    images_dir0 = "C:/_koray/train_datasets/e_scooter/images0"
+    images_dir = "C:/_koray/train_datasets/e_scooter/images"
+    class_names = ["electric scooter"]
+
+    # save_images_with_cv(images_dir0, images_dir)
+    # mirror_images(images_dir, images_dir)
+    # check_single_files(images_dir)
+
+    ## change_class_id(images_dir, 1, 0)
+
     generate_train_txt(train_files_dir, model_name, class_names, images_dir, ratio_train=0.7, ratio_val=0.3, ratio_test=0)
     check_class_ids(train_files_dir, class_names, model_name)
 
+    # yolov4 -> C:\_koray\git\darknet\build\darknet\x64
+    pass
 
-run_vehicles_single()
 
+# run_e_scooter()
 
 # def run_e_scooter():
 #     train_files_dir = "C:/_koray/git/yolov5/data"

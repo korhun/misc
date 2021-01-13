@@ -59,6 +59,12 @@ def append_line(filename, line, encoding="utf-8"):
         f.write("%s\n" % line)
 
 
+def append_lines(filename, lines, encoding="utf-8"):
+    with codecs.open(filename, "a", encoding) as f:
+        for line in lines:
+            f.write("%s\n" % line)
+
+
 def get_parent_dir_path(file_name):
     return str(pathlib.Path(file_name).parent.absolute())
 
