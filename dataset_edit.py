@@ -8,17 +8,22 @@ import image_helper
 import string_helper
 
 
-def save_images_with_cv(source_dir_name, target_dir_name):
+def save_images_with_cv(source_dir_name, target_dir_name, max_dim =None):
     if not os.path.isdir(target_dir_name):
         file_helper.create_dir(target_dir_name)
+    i = 0
     for fn in file_helper.enumerate_files(source_dir_name):
         try:
+            i += 1
+            print("{} - {}".format(i, fn), end="\r")
             dir_name, name, extension = file_helper.get_file_name_extension(fn)
             if string_helper.equals_case_insensitive(extension, ".txt"):
                 new_fn = file_helper.path_join(target_dir_name, name + extension)
                 file_helper.copy_file(fn, new_fn)
             else:
                 mat = cv2.imread(fn)
+                if max_dim is not None:
+                    mat = image_helper.resize_if_larger(mat, max_dim)
                 new_fn = file_helper.path_join(target_dir_name, name + ".jpg")
                 cv2.imwrite(new_fn, mat)
         except Exception as e:
@@ -370,6 +375,7 @@ def check_labels(labels_dir):
 
     print("change_class_id finished")
 
+
 def oidv6_to_yolo(images_and_labels_dir, class_id):
     for label_fn in file_helper.enumerate_files(images_and_labels_dir, recursive=False, wildcard_pattern="*.txt"):
         try:
@@ -473,6 +479,29 @@ def delete_classes(images_dir, classes_old, classes_new):
             print('Error - merge_single_classes - file: {} msg: {}'.format(fn, str(e)))
     check_single_files(images_dir)
 
+
+# def run_vehicles_lp_416():
+#     dir0 = "C:/_koray/train_datasets/vehicles_lp/images"
+#     dir416 = "C:/_koray/train_datasets/vehicles_lp_416/images"
+#     save_images_with_cv(dir0, dir416, 416)
+#
+#     train_files_dir = "C:/_koray/git/yolov5/data"
+#     model_name = "vehicles_lp_416"
+#     images_dir = dir416
+#     class_names = [
+#         "vehicle_registration_plate",
+#         "bicycle",
+#         "bus",
+#         "car",
+#         "motorcycle",
+#         "truck",
+#         "van"
+#     ]
+#
+#     generate_train_txt(train_files_dir, model_name, class_names, images_dir, ratio_train=0.7, ratio_val=0.3, ratio_test=0)
+#     check_class_ids(train_files_dir, class_names, model_name)
+#
+# run_vehicles_lp_416()
 
 #
 # def run_ls_single():
