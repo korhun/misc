@@ -8,22 +8,17 @@ import image_helper
 import string_helper
 
 
-def save_images_with_cv(source_dir_name, target_dir_name, max_dim=None):
+def save_images_with_cv(source_dir_name, target_dir_name):
     if not os.path.isdir(target_dir_name):
         file_helper.create_dir(target_dir_name)
-    i = 0
     for fn in file_helper.enumerate_files(source_dir_name):
         try:
-            i += 1
-            print("{} - {}".format(i, fn), end="\r")
             dir_name, name, extension = file_helper.get_file_name_extension(fn)
             if string_helper.equals_case_insensitive(extension, ".txt"):
                 new_fn = file_helper.path_join(target_dir_name, name + extension)
                 file_helper.copy_file(fn, new_fn)
             else:
                 mat = cv2.imread(fn)
-                if max_dim is not None:
-                    mat = image_helper.resize_if_larger(mat, max_dim)
                 new_fn = file_helper.path_join(target_dir_name, name + ".jpg")
                 cv2.imwrite(new_fn, mat)
         except Exception as e:
@@ -438,6 +433,48 @@ def merge_single_classes(input_dirs, merge_dir):
                 print('Error - merge_single_classes - file: {} msg: {}'.format(fn, str(e)))
 
 
+def delete_classes(images_dir, classes_old, classes_new):
+    class_id_map = {}
+    for old_name in classes_old:
+        old_id = str(classes_old.index(old_name))
+        if old_name in classes_new:
+            class_id_map[old_id] = str(classes_new.index(old_name))
+        else:
+            class_id_map[old_id] = None
+
+    i = 0
+    for fn in file_helper.enumerate_files(images_dir, wildcard_pattern="*.txt"):
+        try:
+            i += 1
+            lines = []
+            changed = False
+            for line in file_helper.read_lines(fn):
+                items = line.split(" ")
+                old_id = items[0]
+                new_id = class_id_map[old_id]
+                if new_id is not None:
+                    if new_id != old_id:
+                        changed = True
+                        items[0] = new_id
+                    lines.append(string_helper.join(items, " "))
+                else:
+                    changed = True
+            if changed:
+                file_helper.delete_file(fn)
+                if len(lines) > 0:
+                    # print("changed - {}".format(fn))
+                    file_helper.write_lines(fn, lines)
+                    print("{} - {} EDITED".format(i, fn), end="\r")
+                else:
+                    print("{} - {} DELETED".format(i, fn), end="\r")
+            else:
+                print("{} - {}".format(i, fn), end="\r")
+        except Exception as e:
+            print('Error - merge_single_classes - file: {} msg: {}'.format(fn, str(e)))
+    check_single_files(images_dir)
+
+
+
 def run_ls_single():
     dir0 = "C:/_koray/train_datasets/vehicle_registration_plate/lp_single_large/images"
     dir416 = "C:/_koray/train_datasets/vehicle_registration_plate/lp_single_416/images"
@@ -455,6 +492,45 @@ def run_ls_single():
 
 run_ls_single()
 
+#
+# def run_vehicles():
+#     images_dir = "C:/_koray/train_datasets/vehicles/images"
+#     model_name = "vehicles"
+#
+#     # classes_old = [
+#     #     "vehicle_registration_plate",
+#     #     "bicycle",
+#     #     "bus",
+#     #     "car",
+#     #     "motorcycle",
+#     #     "truck",
+#     #     "van"
+#     # ]
+#     # classes_new = [
+#     #     "bicycle",
+#     #     "bus",
+#     #     "car",
+#     #     "motorcycle",
+#     #     "truck",
+#     #     "van"
+#     # ]
+#     # delete_classes(images_dir, classes_old, classes_new)
+#
+#     class_names = [
+#         "bicycle",
+#         "bus",
+#         "car",
+#         "motorcycle",
+#         "truck",
+#         "van"
+#     ]
+#     train_files_dir = "C:/_koray/git/yolov5/data"
+#
+#     generate_train_txt(train_files_dir, model_name, class_names, images_dir, ratio_train=0.7, ratio_val=0.3, ratio_test=0)
+#     check_class_ids(train_files_dir, class_names, model_name)
+#
+#
+# run_vehicles()
 
 # def run_e_scooter():
 #     train_files_dir = "C:/_koray/git/yolov5/data"
@@ -475,7 +551,6 @@ run_ls_single()
 #
 #     # yolov4 -> C:\_koray\git\darknet\build\darknet\x64
 #     pass
-#
 
 # run_e_scooter()
 
