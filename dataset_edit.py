@@ -474,23 +474,23 @@ def delete_classes(images_dir, classes_old, classes_new):
     check_single_files(images_dir)
 
 
-
-def run_ls_single():
-    dir0 = "C:/_koray/train_datasets/vehicle_registration_plate/lp_single_large/images"
-    dir416 = "C:/_koray/train_datasets/vehicle_registration_plate/lp_single_416/images"
-    # save_images_with_cv(dir0, dir416, 416)
-
-
-    train_files_dir = "C:/_koray/git/yolov5/data"
-
-    model_name = "lp_single_416"
-    images_dir = dir416
-    class_names = ["plaka"]
-
-    generate_train_txt(train_files_dir, model_name, class_names, images_dir, ratio_train=0.7, ratio_val=0.3, ratio_test=0)
-    check_class_ids(train_files_dir, class_names, model_name)
-
-run_ls_single()
+#
+# def run_ls_single():
+#     dir0 = "C:/_koray/train_datasets/vehicle_registration_plate/lp_single_large/images"
+#     dir416 = "C:/_koray/train_datasets/vehicle_registration_plate/lp_single_416/images"
+#     # save_images_with_cv(dir0, dir416, 416)
+#
+#
+#     train_files_dir = "C:/_koray/git/yolov5/data"
+#
+#     model_name = "lp_single_416"
+#     images_dir = dir416
+#     class_names = ["plaka"]
+#
+#     generate_train_txt(train_files_dir, model_name, class_names, images_dir, ratio_train=0.7, ratio_val=0.3, ratio_test=0)
+#     check_class_ids(train_files_dir, class_names, model_name)
+#
+# run_ls_single()
 
 #
 # def run_vehicles():
