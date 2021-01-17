@@ -8,7 +8,7 @@ import image_helper
 import string_helper
 
 
-def save_images_with_cv(source_dir_name, target_dir_name, max_dim =None):
+def save_images_with_cv(source_dir_name, target_dir_name, max_dim=None):
     if not os.path.isdir(target_dir_name):
         file_helper.create_dir(target_dir_name)
     i = 0
@@ -479,6 +479,26 @@ def delete_classes(images_dir, classes_old, classes_new):
             print('Error - merge_single_classes - file: {} msg: {}'.format(fn, str(e)))
     check_single_files(images_dir)
 
+
+def run_lp_test():
+    dir_oid = "C:/_koray/train_datasets/lp_test/oid"
+    dir_oid_416 = "C:/_koray/train_datasets/lp_test/oid_416"
+
+    # oidv6_to_yolo(dir_oid, 0)
+    # save_images_with_cv(dir_oid, dir_oid_416, 416)
+
+    train_files_dir = "C:/_koray/git/yolov5/data"
+    model_name = "lp_test_416"
+    images_dir = dir_oid_416
+    class_names = [
+        "lp"
+    ]
+
+    # generate_train_txt(train_files_dir, model_name, class_names, images_dir, ratio_train=0.7, ratio_val=0.3, ratio_test=0)
+    check_class_ids(train_files_dir, class_names, model_name)
+
+
+run_lp_test()
 
 # def run_vehicles_lp_416():
 #     dir0 = "C:/_koray/train_datasets/vehicles_lp/images"
