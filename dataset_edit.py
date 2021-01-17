@@ -8,17 +8,22 @@ import image_helper
 import string_helper
 
 
-def save_images_with_cv(source_dir_name, target_dir_name):
+def save_images_with_cv(source_dir_name, target_dir_name, max_dim=None):
     if not os.path.isdir(target_dir_name):
         file_helper.create_dir(target_dir_name)
+    i = 0
     for fn in file_helper.enumerate_files(source_dir_name):
         try:
+            i += 1
+            print("{} - {}".format(i, fn), end="\r")
             dir_name, name, extension = file_helper.get_file_name_extension(fn)
             if string_helper.equals_case_insensitive(extension, ".txt"):
                 new_fn = file_helper.path_join(target_dir_name, name + extension)
                 file_helper.copy_file(fn, new_fn)
             else:
                 mat = cv2.imread(fn)
+                if max_dim is not None:
+                    mat = image_helper.resize_if_larger(mat, max_dim)
                 new_fn = file_helper.path_join(target_dir_name, name + ".jpg")
                 cv2.imwrite(new_fn, mat)
         except Exception as e:
@@ -433,26 +438,44 @@ def merge_single_classes(input_dirs, merge_dir):
                 print('Error - merge_single_classes - file: {} msg: {}'.format(fn, str(e)))
 
 
-def run_e_scooter():
+def run_ls_single():
+    dir0 = "C:/_koray/train_datasets/vehicle_registration_plate/lp_single_large/images"
+    dir416 = "C:/_koray/train_datasets/vehicle_registration_plate/lp_single_416/images"
+    # save_images_with_cv(dir0, dir416, 416)
+
+
     train_files_dir = "C:/_koray/git/yolov5/data"
 
-    model_name = "e_scooter"
-    images_dir0 = "C:/_koray/train_datasets/e_scooter/images0"
-    images_dir = "C:/_koray/train_datasets/e_scooter/images"
-    class_names = ["electric scooter"]
-
-    # save_images_with_cv(images_dir0, images_dir)
-    # mirror_images(images_dir, images_dir)
-    # check_single_files(images_dir)
-
-    ## change_class_id(images_dir, 1, 0)
+    model_name = "lp_single_416"
+    images_dir = dir416
+    class_names = ["plaka"]
 
     generate_train_txt(train_files_dir, model_name, class_names, images_dir, ratio_train=0.7, ratio_val=0.3, ratio_test=0)
     check_class_ids(train_files_dir, class_names, model_name)
 
-    # yolov4 -> C:\_koray\git\darknet\build\darknet\x64
-    pass
+run_ls_single()
 
+
+# def run_e_scooter():
+#     train_files_dir = "C:/_koray/git/yolov5/data"
+#
+#     model_name = "e_scooter"
+#     images_dir0 = "C:/_koray/train_datasets/e_scooter/images0"
+#     images_dir = "C:/_koray/train_datasets/e_scooter/images"
+#     class_names = ["electric scooter"]
+#
+#     # save_images_with_cv(images_dir0, images_dir)
+#     # mirror_images(images_dir, images_dir)
+#     # check_single_files(images_dir)
+#
+#     ## change_class_id(images_dir, 1, 0)
+#
+#     generate_train_txt(train_files_dir, model_name, class_names, images_dir, ratio_train=0.7, ratio_val=0.3, ratio_test=0)
+#     check_class_ids(train_files_dir, class_names, model_name)
+#
+#     # yolov4 -> C:\_koray\git\darknet\build\darknet\x64
+#     pass
+#
 
 # run_e_scooter()
 
