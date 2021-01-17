@@ -483,7 +483,7 @@ def delete_classes(images_dir, classes_old, classes_new):
 # def run_vehicles_lp_416():
 #     dir0 = "C:/_koray/train_datasets/vehicles_lp/images"
 #     dir416 = "C:/_koray/train_datasets/vehicles_lp_416/images"
-#     save_images_with_cv(dir0, dir416, 416)
+#     # save_images_with_cv(dir0, dir416, 416)
 #
 #     train_files_dir = "C:/_koray/git/yolov5/data"
 #     model_name = "vehicles_lp_416"
