@@ -72,6 +72,8 @@ def get_parent_dir_path(file_name):
 def get_parent_dir_name(file_name):
     return str(pathlib.Path(file_name).parent.name)
 
+def get_folder_name(dir_path):
+    return os.path.basename(dir_path)
 
 def path_join(a: AnyStr, *paths: AnyStr) -> AnyStr:
     return os.path.join(a, *paths).replace("/", os.path.sep)

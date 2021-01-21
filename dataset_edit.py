@@ -7,6 +7,8 @@ import file_helper
 import image_helper
 import string_helper
 
+end_txt = "                   \r"
+
 
 def save_images_with_cv(source_dir_name, target_dir_name, max_dim=None):
     if not os.path.isdir(target_dir_name):
@@ -15,7 +17,7 @@ def save_images_with_cv(source_dir_name, target_dir_name, max_dim=None):
     for fn in file_helper.enumerate_files(source_dir_name):
         try:
             i += 1
-            print("{} - {}".format(i, fn), end="\r")
+            print("{} - {}".format(i, fn), end=end_txt)
             dir_name, name, extension = file_helper.get_file_name_extension(fn)
             if string_helper.equals_case_insensitive(extension, ".txt"):
                 new_fn = file_helper.path_join(target_dir_name, name + extension)
@@ -43,7 +45,7 @@ def class_info_yolo(labels_dir, classes_txt_fn):
                 class_id = int(line.split(" ")[0])
                 name = class_names[class_id]
                 class_counts[name] += 1
-            print(class_counts, end="                                  \r")
+            print(class_counts, end=end_txt)
         except Exception as e:
             print("error - class_info_yolo: {}".format(fn))
 
@@ -63,7 +65,7 @@ def mirror_images(source_dir_name, target_dir_name):
     for fn in file_helper.enumerate_files(source_dir_name):
         try:
             i += 1
-            print("{} - {}".format(i, fn), end="\r")
+            print("{} - {}".format(i, fn), end=end_txt)
             dir_name, name, extension = file_helper.get_file_name_extension(fn)
             if string_helper.equals_case_insensitive(extension, ".txt"):
                 if name == "classes" and extension == ".txt":
@@ -102,7 +104,7 @@ def mirror_images_of_classes(input_images_dir, input_labels_dir, output_dir, cla
     for fn_label in file_helper.enumerate_files(input_labels_dir, recursive=False, wildcard_pattern="*.txt"):
         try:
             i += 1
-            print("{} - {}".format(i, fn_label), end="                        \r")
+            print("{} - {}".format(i, fn_label), end=end_txt)
             dir_name, name, extension = file_helper.get_file_name_extension(fn_label)
             mirror = False
             for line in file_helper.read_lines(fn_label):
@@ -153,13 +155,17 @@ def mirror_images_of_classes(input_images_dir, input_labels_dir, output_dir, cla
 
 
 def change_class_id(labels_dir, class_id_from, class_id_to):
+    change_class_id(labels_dir, [class_id_from], class_id_to)
+
+
+def change_class_id_list(labels_dir, class_id_from_list, class_id_to):
     if not os.path.isdir(labels_dir):
         raise Exception("bad dir: " + labels_dir)
     i = 0
     for fn in file_helper.enumerate_files(labels_dir):
         try:
             i += 1
-            print("{} - {}".format(i, fn), end="\r")
+            print("{} - {}".format(i, fn), end=end_txt)
             dir_name, name, extension = file_helper.get_file_name_extension(fn)
             if string_helper.equals_case_insensitive(extension, ".txt"):
                 if name == "classes" and extension == ".txt":
@@ -169,7 +175,7 @@ def change_class_id(labels_dir, class_id_from, class_id_to):
                 changed = False
                 for line in file_helper.read_lines(fn):
                     lst = line.split(" ")
-                    if int(lst[0]) == class_id_from:
+                    if int(lst[0]) in class_id_from_list:
                         changed = True
                         lst[0] = str(class_id_to)
                     new_line = string_helper.join(lst, " ")
@@ -178,7 +184,7 @@ def change_class_id(labels_dir, class_id_from, class_id_to):
                     file_helper.delete_file(fn)
                     file_helper.write_lines(fn, lines)
         except Exception as e:
-            print("error - mirror_images: {}".format(fn))
+            print("error - change_class_id: {}".format(fn))
 
     print("change_class_id finished")
 
@@ -347,7 +353,7 @@ def check_labels(labels_dir):
     for fn in file_helper.enumerate_files(labels_dir):
         try:
             i += 1
-            print("{} - {}".format(i, fn), end="\r")
+            print("{} - {}".format(i, fn), end=end_txt)
             dir_name, name, extension = file_helper.get_file_name_extension(fn)
             if string_helper.equals_case_insensitive(extension, ".txt"):
                 if name == "classes" and extension == ".txt":
@@ -379,7 +385,7 @@ def check_labels(labels_dir):
 def oidv6_to_yolo(images_and_labels_dir, class_id):
     for label_fn in file_helper.enumerate_files(images_and_labels_dir, recursive=False, wildcard_pattern="*.txt"):
         try:
-            print(label_fn, end="\r")
+            print(label_fn, end=end_txt)
             name = os.path.basename(label_fn)
             image_fn = file_helper.path_join(images_and_labels_dir, name.replace(".txt", ".jpg"))
             if os.path.isfile(image_fn):
@@ -410,13 +416,57 @@ def oidv6_to_yolo(images_and_labels_dir, class_id):
             print('Error - file:{} msg:{}'.format(label_fn, str(e)))
 
 
+def oidv6_to_yolo2(input_images_dir, input_labels_dir, output_labels_and_images_dir, class_id):
+    i = 0
+    if not os.path.isdir(output_labels_and_images_dir):
+        file_helper.create_dir(output_labels_and_images_dir)
+    for label_fn in file_helper.enumerate_files(input_labels_dir, recursive=False, wildcard_pattern="*.txt"):
+        try:
+            i += 1
+            print("{} - {}".format(i, label_fn), end=end_txt)
+            dir_name, name, extension = file_helper.get_file_name_extension(label_fn)
+            image_fn = file_helper.path_join(input_images_dir, name + ".jpg")
+            if os.path.isfile(image_fn):
+                mat = cv2.imread(image_fn)
+                h, w = image_helper.image_h_w(mat)
+                lines = []
+                for line in file_helper.read_lines(label_fn):
+                    line = line.replace("\t", " ").replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("  ", " ")
+                    arr0 = line.split(" ")
+                    arr = [class_id]
+                    x1 = float(arr0[1])
+                    y1 = float(arr0[2])
+                    x2 = float(arr0[3])
+                    y2 = float(arr0[4])
+                    arr.append((x1 + x2) * 0.5 / w)
+                    arr.append((y1 + y2) * 0.5 / h)
+                    arr.append((x2 - x1) / w)
+                    arr.append((y2 - y1) / h)
+                    line = ' '.join(str(e) for e in arr)
+                    lines.append(line)
+
+                out_img_fn = file_helper.path_join(output_labels_and_images_dir, name + ".jpg")
+                out_lbl_fn = file_helper.path_join(output_labels_and_images_dir, name + ".txt")
+                if os.path.isfile(out_img_fn):
+                    os.remove(out_img_fn)
+                if os.path.isfile(out_lbl_fn):
+                    os.remove(out_lbl_fn)
+
+                file_helper.write_lines(out_lbl_fn, lines)
+                file_helper.copy_file(image_fn, out_img_fn)
+            else:
+                print("no image: " + image_fn)
+        except Exception as e:
+            print('Error - file:{} msg:{}'.format(label_fn, str(e)))
+
+
 def merge_single_classes(input_dirs, merge_dir):
     i = 0
     for input_dir in input_dirs:
         for fn in file_helper.enumerate_files(input_dir):
             try:
                 i += 1
-                print("{} - {}".format(i, fn), end="\r")
+                print("{} - {}".format(i, fn), end=end_txt)
                 dir_name, name, extension = file_helper.get_file_name_extension(fn)
                 if extension != ".txt":
                     fn_input_txt = file_helper.path_join(input_dir, name + ".txt")
@@ -434,7 +484,7 @@ def merge_single_classes(input_dirs, merge_dir):
                         file_helper.copy_file(fn_input_txt, fn_output_txt)
                     else:
                         file_helper.append_lines(fn_output_txt, file_helper.read_lines(fn_input_txt))
-                        print('Merged: {}'.format(fn_output_txt), end="\r")
+                        print('Merged: {}'.format(fn_output_txt), end=end_txt)
             except Exception as e:
                 print('Error - merge_single_classes - file: {} msg: {}'.format(fn, str(e)))
 
@@ -470,35 +520,121 @@ def delete_classes(images_dir, classes_old, classes_new):
                 if len(lines) > 0:
                     # print("changed - {}".format(fn))
                     file_helper.write_lines(fn, lines)
-                    print("{} - {} EDITED".format(i, fn), end="\r")
+                    print("{} - {} EDITED".format(i, fn), end=end_txt)
                 else:
-                    print("{} - {} DELETED".format(i, fn), end="\r")
+                    print("{} - {} DELETED".format(i, fn), end=end_txt)
             else:
-                print("{} - {}".format(i, fn), end="\r")
+                print("{} - {}".format(i, fn), end=end_txt)
         except Exception as e:
             print('Error - merge_single_classes - file: {} msg: {}'.format(fn, str(e)))
     check_single_files(images_dir)
 
 
-def run_lp_test():
-    dir_oid = "C:/_koray/train_datasets/lp_test/oid"
-    dir_oid_416 = "C:/_koray/train_datasets/lp_test/oid_416"
+def coco_separate_classes(input_dir, output_dir):
+    classes_fn = file_helper.path_join(input_dir, "_classes.txt")
+    classes = []
+    for line in file_helper.read_lines(classes_fn):
+        classes.append(line)
 
-    # oidv6_to_yolo(dir_oid, 0)
-    # save_images_with_cv(dir_oid, dir_oid_416, 416)
+    i = 0
+    ann_fn = file_helper.path_join(input_dir, "_annotations.txt")
+    img_fn = None
+    for line in file_helper.read_lines(ann_fn):
+        try:
+            items = line.split(" ")
+            img_fn = file_helper.path_join(input_dir, items[0])
+            dir_name, name, extension = file_helper.get_file_name_extension(img_fn)
+            i += 1
+            print("{} - {}".format(i, img_fn), end=end_txt)
 
-    train_files_dir = "C:/_koray/git/yolov5/data"
-    model_name = "lp_test_416"
-    images_dir = dir_oid_416
-    class_names = [
-        "lp"
-    ]
+            mat = cv2.imread(img_fn)
+            h, w = image_helper.image_h_w(mat)
 
-    # generate_train_txt(train_files_dir, model_name, class_names, images_dir, ratio_train=0.7, ratio_val=0.3, ratio_test=0)
-    check_class_ids(train_files_dir, class_names, model_name)
+            for j in range(1, len(items)):
+                item = items[j]
+                values_str = item.split(",")
+                values = []
+                for v in values_str:
+                    values.append(int(v))
+                class_name = classes[values[4]]
+                write_dir = file_helper.path_join(output_dir, class_name)
+                if not os.path.isdir(write_dir):
+                    file_helper.create_dir(write_dir)
+
+                write_img_fn = file_helper.path_join(write_dir, name + extension)
+                if not os.path.isfile(write_img_fn):
+                    file_helper.copy_file(img_fn, write_img_fn)
+
+                x1, y1, x2, y2 = list(values[:4])
+                w_ = (x2 - x1)
+                h_ = (y2 - y1)
+                cx = (x1 + w_ * 0.5) / w
+                cy = (y1 + h_ * 0.5) / h
+                line = "0 {} {} {} {}".format(cx, cy, w_ / w, h_ / h)
+
+                write_lbl_fn = file_helper.path_join(write_dir, name + ".txt")
+                if os.path.isfile(write_lbl_fn):
+                    file_helper.append_line(write_lbl_fn, line)
+                else:
+                    file_helper.write_lines(write_lbl_fn, [line])
 
 
-run_lp_test()
+        except Exception as e:
+            print('Error - file:{} msg:{}'.format(img_fn, str(e)))
+
+# def coco_class0():
+#     dirs = [
+#         "C:/_koray/train_datasets/Microsoft COCO.v2-raw.yolov4pytorch/train",
+#         "C:/_koray/train_datasets/Microsoft COCO.v2-raw.yolov4pytorch/valid"
+#     ]
+#     out_dir = "C:/_koray/train_datasets/coco0"
+#     for d in dirs:
+#         coco_separate_classes(d, out_dir)
+#
+#
+# coco_class0()
+
+# def yolo_class0():
+#     dirs = [
+#         "C:/_koray/train_datasets/oidv6/bicycle",
+#         "C:/_koray/train_datasets/oidv6/bus",
+#         "C:/_koray/train_datasets/oidv6/car",
+#         "C:/_koray/train_datasets/oidv6/motorcycle",
+#         "C:/_koray/train_datasets/oidv6/truck",
+#         "C:/_koray/train_datasets/oidv6/van",
+#         "C:/_koray/train_datasets/oidv6/vehicle_registration_plate",
+#     ]
+#     dir_out_pattern = "C:/_koray/train_datasets/yolo_class0/{}"
+#
+#     for d in dirs:
+#         name = file_helper.get_folder_name(d)
+#         input_images_dir = d
+#         input_labels_dir = file_helper.path_join(d, "labels")
+#         output_labels_and_images_dir = dir_out_pattern.format(name)
+#         class_id = 0
+#         oidv6_to_yolo2(input_images_dir, input_labels_dir, output_labels_and_images_dir, class_id)
+#
+#
+# yolo_class0()
+
+# def run_lp_test():
+#     dir_captured = "C:/_koray/train_datasets/lp_test/captured"
+#     dir_captured_416 = "C:/_koray/train_datasets/lp_test/captured_416"
+#
+#     save_images_with_cv(dir_captured, dir_captured_416, 416)
+#
+#     train_files_dir = "C:/_koray/git/yolov5/data"
+#     model_name = "lp_test_416"
+#     images_dir = dir_captured_416
+#     class_names = [
+#         "lp"
+#     ]
+#
+#     generate_train_txt(train_files_dir, model_name, class_names, images_dir, ratio_train=0.7, ratio_val=0.3, ratio_test=0)
+#     check_class_ids(train_files_dir, class_names, model_name)
+#
+#
+# run_lp_test()
 
 # def run_vehicles_lp_416():
 #     dir0 = "C:/_koray/train_datasets/vehicles_lp/images"
