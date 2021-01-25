@@ -2,6 +2,8 @@ import codecs
 import io
 import os
 import pathlib
+import shutil
+import uuid
 from typing import AnyStr, Tuple
 from shutil import copyfile
 
@@ -72,8 +74,10 @@ def get_parent_dir_path(file_name):
 def get_parent_dir_name(file_name):
     return str(pathlib.Path(file_name).parent.name)
 
+
 def get_folder_name(dir_path):
     return os.path.basename(dir_path)
+
 
 def path_join(a: AnyStr, *paths: AnyStr) -> AnyStr:
     return os.path.join(a, *paths).replace("/", os.path.sep)
@@ -96,3 +100,11 @@ def get_file_name_extension(file_full_name) -> Tuple[AnyStr, AnyStr, AnyStr]:
 
 def delete_file(file_name):
     os.remove(file_name)
+
+
+def get_unique_file_name():
+    return str(uuid.uuid4())
+
+
+def delete_dir(path_to_dir):
+    shutil.rmtree(path_to_dir)

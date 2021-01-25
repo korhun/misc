@@ -337,3 +337,5 @@ def change_brightness(img, value):
 #####not merged
 def mirror(mat):
     return cv2.flip(mat, 1)
+
+

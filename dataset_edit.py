@@ -270,7 +270,7 @@ def generate_train_txt(output_dir, model_name, class_names, images_dir, ratio_tr
     labels_dir = os.path.join(os.path.abspath(os.path.join(images_dir, os.pardir)), "labels")
     if not os.path.isdir(labels_dir):
         file_helper.create_dir(labels_dir)
-    for fn in file_helper.enumerate_files(labels_dir, recursive=True):
+    for fn in file_helper.enumerate_files(labels_dir, recursive=False):
         if str.endswith(fn, ".txt"):
             os.remove(fn)
     with open(all_data, "a") as file:
@@ -582,40 +582,311 @@ def coco_separate_classes(input_dir, output_dir):
         except Exception as e:
             print('Error - file:{} msg:{}'.format(img_fn, str(e)))
 
-# def coco_class0():
-#     dirs = [
-#         "C:/_koray/train_datasets/Microsoft COCO.v2-raw.yolov4pytorch/train",
-#         "C:/_koray/train_datasets/Microsoft COCO.v2-raw.yolov4pytorch/valid"
-#     ]
-#     out_dir = "C:/_koray/train_datasets/coco0"
-#     for d in dirs:
-#         coco_separate_classes(d, out_dir)
-#
-#
-# coco_class0()
 
-# def yolo_class0():
-#     dirs = [
-#         "C:/_koray/train_datasets/oidv6/bicycle",
-#         "C:/_koray/train_datasets/oidv6/bus",
-#         "C:/_koray/train_datasets/oidv6/car",
-#         "C:/_koray/train_datasets/oidv6/motorcycle",
-#         "C:/_koray/train_datasets/oidv6/truck",
-#         "C:/_koray/train_datasets/oidv6/van",
-#         "C:/_koray/train_datasets/oidv6/vehicle_registration_plate",
-#     ]
-#     dir_out_pattern = "C:/_koray/train_datasets/yolo_class0/{}"
-#
-#     for d in dirs:
-#         name = file_helper.get_folder_name(d)
-#         input_images_dir = d
-#         input_labels_dir = file_helper.path_join(d, "labels")
-#         output_labels_and_images_dir = dir_out_pattern.format(name)
-#         class_id = 0
-#         oidv6_to_yolo2(input_images_dir, input_labels_dir, output_labels_and_images_dir, class_id)
-#
-#
-# yolo_class0()
+def crop_rect(mat, cx_norm, cy_norm, w_norm, h_norm, crop_size):
+    img_h0, img_w0 = image_helper.image_h_w(mat)
+    cx0 = cx_norm * img_w0
+    cy0 = cy_norm * img_h0
+    w0 = w_norm * img_w0
+    h0 = h_norm * img_h0
+
+    r0_x1 = int(min(max(0, cx0 - w0 * 0.5), img_w0))
+    r0_y1 = int(min(max(0, cy0 - h0 * 0.5), img_h0))
+    # r0_x2 = int(min(max(0, cx0 + w0 * 0.5), img_w0))
+    # r0_y2 = int(min(max(0, cy0 + h0 * 0.5), img_h0))
+
+    crop_w = crop_size[0] * 0.5
+    crop_h = crop_size[1] * 0.5
+    crop_x1 = int(min(max(0, cx0 - crop_w), img_w0))
+    crop_y1 = int(min(max(0, cy0 - crop_h), img_h0))
+    crop_x2 = int(min(max(0, cx0 + crop_w), img_w0))
+    crop_y2 = int(min(max(0, cy0 + crop_h), img_h0))
+
+    img = image_helper.crop(mat, [crop_y1, crop_x1, crop_y2, crop_x2])
+    img_h1, img_w1 = image_helper.image_h_w(img)
+
+    r1_x1 = min(max(r0_x1 - crop_x1, 0), img_w1)
+    r1_y1 = min(max(r0_y1 - crop_y1, 0), img_h1)
+    r1_x2 = min(r1_x1 + w0, img_w1)
+    r1_y2 = min(r1_y1 + h0, img_h1)
+
+    w = (r1_x2 - r1_x1)
+    h = (r1_y2 - r1_y1)
+    cx = r1_x1 + w * 0.5
+    cy = r1_y1 + h * 0.5
+
+    return img, cx / img_w1, cy / img_h1, w / img_w1, h / img_h1
+
+
+def find_image_file(images_dir, name_without_extension):
+    fn = file_helper.path_join(images_dir, name_without_extension)
+    if os.path.isfile(fn + ".jpg"):
+        return fn + ".jpg"
+    elif os.path.isfile(fn + ".jpeg"):
+        return fn + ".jpeg"
+    elif os.path.isfile(fn + ".png"):
+        return fn + ".png"
+    else:
+        return None
+
+
+def combine_classes(class_items, out_images_dir, out_labels_dir, out_classes_txt_fn, out_style="yolo"):
+    # a typical class_item
+    # {
+    #     "class_name": "vehicle license plate",
+    #     "dirs":
+    #         [
+    #             {
+    #                 "images": "C:/_koray/train_datasets/yolo_oidv6_class0/vehicle_registration_plate",
+    #                 "labels": "C:/_koray/train_datasets/yolo_oidv6_class0/vehicle_registration_plate"
+    #             },
+    #             {
+    #                 "images": "C:/_koray/train_datasets/yolo_misc/vehicle_registration_plate/class0",
+    #                 "labels": "C:/_koray/train_datasets/yolo_misc/vehicle_registration_plate/class0"
+    #             }
+    #         ],
+    #     "resize_style": None, "if_larger" or "crop" - if "crop" -> make the image unique, don't combine, other combine with other classes
+    #     "image_size": 640, - if None no resize, combine all
+    #     "style": "yolo"
+    # }
+
+    class_names = []
+    if out_style == "yolo":
+        if not os.path.isdir(out_images_dir):
+            file_helper.create_dir(out_images_dir)
+
+        if not os.path.isdir(out_labels_dir):
+            file_helper.create_dir(out_labels_dir)
+
+        if os.path.isfile(out_classes_txt_fn):
+            for class_name in file_helper.read_lines(out_classes_txt_fn):
+                class_names.append(class_name)
+    else:
+        raise Exception("Bad out_style: " + out_style)
+
+    for class_item in class_items:
+        class_name = class_item["class_name"]
+        resize_style = class_item["resize_style"]
+        image_size = class_item["image_size"]
+        if image_size is not None:
+            image_size_txt = "{}_{}".format(image_size[0], image_size[1])
+        else:
+            image_size_txt = None
+        input_style = class_item["input_style"]
+
+        if class_name in class_names:
+            class_index = class_names.index(class_name)
+        else:
+            class_index = len(class_names)
+            class_names.append(class_name)
+            file_helper.append_line(out_classes_txt_fn, class_name)
+
+        i = 0
+        for dir_item in class_item["dirs"]:
+            images_dir = dir_item["images"]
+            labels_dir = dir_item["labels"]
+
+            if input_style == "yolo":
+                for label_fn in file_helper.enumerate_files(labels_dir, wildcard_pattern="*.txt"):
+                    try:
+                        _dir_name, name, _extension = file_helper.get_file_name_extension(label_fn)
+
+                        i += 1
+                        print("{} - {}".format(i, label_fn), end=end_txt)
+
+                        for line in file_helper.read_lines(label_fn):
+                            line_items = line.split(" ")
+                            cx_norm = float(line_items[1])
+                            cy_norm = float(line_items[2])
+                            w_norm = float(line_items[3])
+                            h_norm = float(line_items[4])
+                            line_items[0] = str(class_index)
+
+                            out_lbl_fn = None
+                            out_img_fn = None
+                            mat = None
+                            # for image_fn in file_helper.enumerate_files(images_dir, wildcard_pattern=name + ".*"):
+                            image_fn = find_image_file(images_dir, name)
+                            if image_fn is not None:
+                                _dir_name, _name, extension = file_helper.get_file_name_extension(image_fn)
+                                if extension != ".txt":
+                                    try:
+                                        mat = cv2.imread(image_fn)
+                                    except Exception as e:
+                                        print('Error reading image file: {} msg:{}'.format(image_fn, str(e)))
+                                    if mat is not None:
+                                        if resize_style is None:
+                                            out_img_fn = file_helper.path_join(out_images_dir, name + ".jpg")
+                                            out_lbl_fn = file_helper.path_join(out_labels_dir, name + ".txt")
+                                        elif resize_style == "if_larger":
+                                            out_img_fn = file_helper.path_join(out_images_dir, name + "_" + image_size_txt + ".jpg")
+                                            out_lbl_fn = file_helper.path_join(out_labels_dir, name + "_" + image_size_txt + ".txt")
+                                            mat = image_helper.resize_if_larger(mat, max(image_size[0], image_size[1]))
+                                        elif resize_style == "crop":
+                                            new_name = file_helper.get_unique_file_name()
+                                            out_img_fn = file_helper.path_join(out_images_dir, name + "_crop_" + new_name + ".jpg")
+                                            out_lbl_fn = file_helper.path_join(out_labels_dir, name + "_crop_" + new_name + ".txt")
+                                            mat, cx, cy, w, h = crop_rect(mat, cx_norm, cy_norm, w_norm, h_norm, image_size)
+                                            line_items[1] = str(cx)
+                                            line_items[2] = str(cy)
+                                            line_items[3] = str(w)
+                                            line_items[4] = str(h)
+                                        else:
+                                            raise Exception("Bad resize_style: " + resize_style)
+                            else:
+                                raise Exception("Cannot find image file")
+
+                            if out_lbl_fn is not None:
+                                line = string_helper.join(line_items, " ")
+                                if os.path.isfile(out_lbl_fn):
+                                    file_helper.append_line(out_lbl_fn, line)
+                                else:
+                                    file_helper.write_lines(out_lbl_fn, [line])
+                            if out_img_fn is not None and mat is not None:
+                                if not os.path.isfile(out_img_fn):
+                                    cv2.imwrite(out_img_fn, mat)
+                    except Exception as e:
+                        print('Error - file:{} msg:{}'.format(label_fn, str(e)))
+            else:
+                raise Exception("Bad input_style: " + out_style)
+
+
+def run_combine_classes():
+    out_style = "yolo"
+    image_size = [640, 640]
+    model_name = "lp_" + str(image_size[0])
+    out_base_dir = "C:/_koray/train_datasets/active"
+
+    images_dir = file_helper.path_join(out_base_dir, model_name, "images")
+    labels_dir = file_helper.path_join(out_base_dir, model_name, "images")
+    classes_txt_fn = file_helper.path_join(out_base_dir, "classes.txt")
+
+    class_items = [
+        {
+            "class_name": "vehicle license plate",
+            "dirs":
+                [
+                    {
+                        "images": "C:/_koray/train_datasets/yolo_misc/vehicle_registration_plate/class0",
+                        "labels": "C:/_koray/train_datasets/yolo_misc/vehicle_registration_plate/class0"
+                    }
+                ],
+            "resize_style": "crop",
+            "image_size": image_size,
+            "input_style": "yolo"
+        },
+        {
+            "class_name": "bicycle",
+            "dirs":
+                [
+                    {
+                        "images": "C:/_koray/train_datasets/yolo_oidv6_class0/bicycle",
+                        "labels": "C:/_koray/train_datasets/yolo_oidv6_class0/bicycle"
+                    },
+                    {
+                        "images": "C:/_koray/train_datasets/yolo_coco_class0/bicycle",
+                        "labels": "C:/_koray/train_datasets/yolo_coco_class0/bicycle"
+                    }
+                ],
+            "resize_style": "if_larger",
+            "image_size": image_size,
+            "input_style": "yolo"
+        },
+        {
+            "class_name": "bus",
+            "dirs":
+                [
+                    {
+                        "images": "C:/_koray/train_datasets/yolo_oidv6_class0/bus",
+                        "labels": "C:/_koray/train_datasets/yolo_oidv6_class0/bus"
+                    },
+                    {
+                        "images": "C:/_koray/train_datasets/yolo_coco_class0/bus",
+                        "labels": "C:/_koray/train_datasets/yolo_coco_class0/bus"
+                    }
+                ],
+            "resize_style": "if_larger",
+            "image_size": image_size,
+            "input_style": "yolo"
+        },
+        {
+            "class_name": "car",
+            "dirs":
+                [
+                    {
+                        "images": "C:/_koray/train_datasets/yolo_oidv6_class0/car",
+                        "labels": "C:/_koray/train_datasets/yolo_oidv6_class0/car"
+                    },
+                    {
+                        "images": "C:/_koray/train_datasets/yolo_coco_class0/car",
+                        "labels": "C:/_koray/train_datasets/yolo_coco_class0/car"
+                    }
+                ],
+            "resize_style": "if_larger",
+            "image_size": image_size,
+            "input_style": "yolo"
+        },
+        {
+            "class_name": "motorcycle",
+            "dirs":
+                [
+                    {
+                        "images": "C:/_koray/train_datasets/yolo_oidv6_class0/motorcycle",
+                        "labels": "C:/_koray/train_datasets/yolo_oidv6_class0/motorcycle"
+                    },
+                    {
+                        "images": "C:/_koray/train_datasets/yolo_coco_class0/motorbike",
+                        "labels": "C:/_koray/train_datasets/yolo_coco_class0/motorbike"
+                    }
+                ],
+            "resize_style": "if_larger",
+            "image_size": image_size,
+            "input_style": "yolo"
+        },
+        {
+            "class_name": "truck",
+            "dirs":
+                [
+                    {
+                        "images": "C:/_koray/train_datasets/yolo_oidv6_class0/truck",
+                        "labels": "C:/_koray/train_datasets/yolo_oidv6_class0/truck"
+                    },
+                    {
+                        "images": "C:/_koray/train_datasets/yolo_coco_class0/truck",
+                        "labels": "C:/_koray/train_datasets/yolo_coco_class0/truck"
+                    }
+                ],
+            "resize_style": "if_larger",
+            "image_size": image_size,
+            "input_style": "yolo"
+        },
+        {
+            "class_name": "van",
+            "dirs":
+                [
+                    {
+                        "images": "C:/_koray/train_datasets/yolo_oidv6_class0/van",
+                        "labels": "C:/_koray/train_datasets/yolo_oidv6_class0/van"
+                    }
+                ],
+            "resize_style": "if_larger",
+            "image_size": image_size,
+            "input_style": "yolo"
+        }
+    ]
+
+    # combine_classes(class_items, images_dir, labels_dir, classes_txt_fn, out_style)
+
+    train_files_dir = "C:/_koray/git/yolov5/data"
+    class_names = []
+    for item in class_items:
+        class_names.append(item["class_name"])
+
+    generate_train_txt(train_files_dir, model_name, class_names, images_dir, ratio_train=0.7, ratio_val=0.3, ratio_test=0)
+    check_class_ids(train_files_dir, class_names, model_name)
+
+
+run_combine_classes()
 
 # def run_lp_test():
 #     dir_captured = "C:/_koray/train_datasets/lp_test/captured"
