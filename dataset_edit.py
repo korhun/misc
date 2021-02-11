@@ -316,7 +316,7 @@ def generate_train_txt(output_dir, model_name, class_names, images_dir, ratio_tr
                 file.write(line + "\n")
             # print(line)
 
-    print("generate_train_txt finished")
+    print("generate_train_txt finished: " + output_dir)
 
 
 def check_class_ids(train_files_dir, class_names, model_name):
@@ -715,7 +715,7 @@ def combine_classes(class_items, out_images_dir, out_labels_dir, out_classes_txt
                                     except Exception as e:
                                         print('Error reading image file: {} msg:{}'.format(image_fn, str(e)))
                                     if mat is not None:
-                                        if resize_style is None:
+                                        if image_size is None or resize_style is None:
                                             out_img_fn = file_helper.path_join(out_images_dir, name + ".jpg")
                                             out_lbl_fn = file_helper.path_join(out_labels_dir, name + ".txt")
                                         elif resize_style == "if_larger":
@@ -753,13 +753,18 @@ def combine_classes(class_items, out_images_dir, out_labels_dir, out_classes_txt
 
 def run_combine_classes():
     out_style = "yolo"
-    image_size = [640, 640]
-    model_name = "lp_" + str(image_size[0])
+    # image_size = [640, 640]
+    # image_size = [416, 416]
+    image_size = None
+    if image_size is not None:
+        model_name = "lp_" + str(image_size[0])
+    else:
+        model_name = "lp_orj"
     out_base_dir = "C:/_koray/train_datasets/active"
 
     images_dir = file_helper.path_join(out_base_dir, model_name, "images")
     labels_dir = file_helper.path_join(out_base_dir, model_name, "images")
-    classes_txt_fn = file_helper.path_join(out_base_dir, "classes.txt")
+    classes_txt_fn = file_helper.path_join(out_base_dir, model_name, "classes.txt")
 
     class_items = [
         {
@@ -875,7 +880,7 @@ def run_combine_classes():
         }
     ]
 
-    # combine_classes(class_items, images_dir, labels_dir, classes_txt_fn, out_style)
+    combine_classes(class_items, images_dir, labels_dir, classes_txt_fn, out_style)
 
     train_files_dir = "C:/_koray/git/yolov5/data"
     class_names = []
