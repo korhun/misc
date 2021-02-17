@@ -105,6 +105,7 @@ if __name__ == '__main__':
     i = 0
     for frame in vid.get_frames():
         cv2.imshow("deneme", frame)
+        cv2.waitKey(1)
         i += 1
         if i % 30:
             cv2.imwrite("C:/_koray/temp/frame{}.jpg".format(i), frame)
