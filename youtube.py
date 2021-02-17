@@ -25,7 +25,7 @@ class YoutubeVideoSource():
         # Add YouTube Video URL as input source (for e.g https://youtu.be/bvetuLwJIkA)
         # and enable Stream Mode (`stream_mode = True`)
         stream = CamGear(
-            source= self.__url, stream_mode=True, logging=True
+            source=self.__url, stream_mode=True, logging=True
         ).start()
 
         skip = 0
@@ -100,10 +100,11 @@ class YoutubeVideoSource():
         self.__stream = CamGear(source=self.__url, y_tube=True, time_delay=1, logging=True, **self.__cam_gear_options)
 
 
-# vid = YoutubeVideoSource("https://www.youtube.com/watch?v=ho1QG2OEMFs&t=26s")
-# i = 0
-# for frame in vid.get_frames():
-#     cv2.imshow("deneme", frame)
-#     i += 1
-#     if i % 30:
-#         cv2.imwrite("C:/_koray/temp/frame{}.jpg".format(i), frame)
+if __name__ == '__main__':
+    vid = YoutubeVideoSource("https://www.youtube.com/watch?v=ho1QG2OEMFs&t=26s")
+    i = 0
+    for frame in vid.get_frames():
+        cv2.imshow("deneme", frame)
+        i += 1
+        if i % 30:
+            cv2.imwrite("C:/_koray/temp/frame{}.jpg".format(i), frame)
