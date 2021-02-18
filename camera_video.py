@@ -60,7 +60,7 @@ if __name__ == '__main__':
     # cap = _find_video_capture()
     # vid = CameraVideo(cap, max_dim=1600, mirror=True)
 
-    #use video file:
+    # use video file:
     cap = cv2.VideoCapture("C:/_koray/test_data/fabrika/1_sosyal_mesafe_ihlali.mp4")
     vid = CameraVideo(cap, max_dim=0, mirror=False)
 
@@ -69,5 +69,5 @@ if __name__ == '__main__':
         cv2.imshow("deneme", frame1)
         cv2.waitKey(1)
         i += 1
-        if i % 30:
+        if i % 30 == 0:
             cv2.imwrite("C:/_koray/temp/frame{}.jpg".format(i), frame1)

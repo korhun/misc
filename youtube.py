@@ -107,5 +107,5 @@ if __name__ == '__main__':
         cv2.imshow("deneme", frame)
         cv2.waitKey(1)
         i += 1
-        if i % 30:
+        if i % 30 == 0:
             cv2.imwrite("C:/_koray/temp/frame{}.jpg".format(i), frame)
