@@ -55,6 +55,12 @@ def enumerate_files(dir_path, recursive=False, wildcard_pattern=None, case_insen
             if not recursive:
                 break
 
+def enumerate_dirs(dir_path, recursive=False):
+    for root, sub_dirs, files in os.walk(dir_path):
+        for sub_dir in sub_dirs:
+            yield path_join(root, sub_dir), sub_dir
+        if not recursive:
+            break
 
 def append_line(filename, line, encoding="utf-8"):
     with codecs.open(filename, "a", encoding) as f:
